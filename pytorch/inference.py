@@ -34,10 +34,10 @@ def audio_tagging(args):
 
     # Model
     Model = eval(model_type)
-    model = Model(sample_rate=sample_rate, window_size=window_size, 
-        hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
+    model = Model(sample_rate=sample_rate, window_size=window_size,
+        hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
         classes_num=classes_num)
-    
+
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
 
@@ -47,7 +47,7 @@ def audio_tagging(args):
 
     if 'cuda' in str(device):
         model.to(device)
-    
+
     # Load audio
     (waveform, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
 
@@ -66,7 +66,7 @@ def audio_tagging(args):
 
     # Print audio tagging top probabilities
     for k in range(10):
-        print('{}: {:.3f}'.format(np.array(labels)[sorted_indexes[k]], 
+        print('{}: {:.3f}'.format(np.array(labels)[sorted_indexes[k]],
             clipwise_output[sorted_indexes[k]]))
 
     # Print embedding
@@ -103,10 +103,10 @@ def sound_event_detection(args):
 
     # Model
     Model = eval(model_type)
-    model = Model(sample_rate=sample_rate, window_size=window_size, 
-        hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
+    model = Model(sample_rate=sample_rate, window_size=window_size,
+        hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
         classes_num=classes_num)
-    
+
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
 
@@ -116,17 +116,27 @@ def sound_event_detection(args):
 
     if 'cuda' in str(device):
         model.to(device)
-    
+
     # Load audio
     (waveform, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
 
-    waveform = waveform[None, :]    # (1, audio_length)
+    waveform = waveform[None, :] # (1, audio_length)
     waveform = move_data_to_device(waveform, device)
 
     # Forward
     with torch.no_grad():
         model.eval()
         batch_output_dict = model(waveform, None)
+
+    print(batch_output_dict.keys())
+
+    clipwise_output = batch_output_dict['clipwise_output'].data.cpu().numpy()[0]
+    sorted_indexes = np.argsort(clipwise_output)[::-1]
+
+    top_k = 10  # Show top results
+    top_result_mat = clipwise_output[sorted_indexes[0 : top_k]]
+    print(top_result_mat)
+    print(sorted_indexes[0:top_k])
 
     framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
     """(time_steps, classes_num)"""
@@ -137,11 +147,11 @@ def sound_event_detection(args):
     sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
 
     top_k = 10  # Show top results
-    top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]    
+    top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]
     """(time_steps, top_k)"""
 
-    # Plot result    
-    stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=window_size, 
+    # Plot result
+    stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=window_size,
         hop_length=hop_size, window='hann', center=True)
     frames_num = stft.shape[-1]
 
@@ -162,6 +172,12 @@ def sound_event_detection(args):
     plt.savefig(fig_path)
     print('Save sound event detection visualization to {}'.format(fig_path))
 
+    # print(np.argmax(framewise_output[1]))
+
+    # for i, fw in enumerate(framewise_output):
+    #     print(i, np.argmax(fw))
+
+    # print(len(framewise_output))
     return framewise_output, labels
 
 
@@ -175,7 +191,7 @@ if __name__ == '__main__':
     parser_at.add_argument('--hop_size', type=int, default=320)
     parser_at.add_argument('--mel_bins', type=int, default=64)
     parser_at.add_argument('--fmin', type=int, default=50)
-    parser_at.add_argument('--fmax', type=int, default=14000) 
+    parser_at.add_argument('--fmax', type=int, default=14000)
     parser_at.add_argument('--model_type', type=str, required=True)
     parser_at.add_argument('--checkpoint_path', type=str, required=True)
     parser_at.add_argument('--audio_path', type=str, required=True)
@@ -186,12 +202,12 @@ if __name__ == '__main__':
     parser_sed.add_argument('--hop_size', type=int, default=320)
     parser_sed.add_argument('--mel_bins', type=int, default=64)
     parser_sed.add_argument('--fmin', type=int, default=50)
-    parser_sed.add_argument('--fmax', type=int, default=14000) 
+    parser_sed.add_argument('--fmax', type=int, default=14000)
     parser_sed.add_argument('--model_type', type=str, required=True)
     parser_sed.add_argument('--checkpoint_path', type=str, required=True)
     parser_sed.add_argument('--audio_path', type=str, required=True)
     parser_sed.add_argument('--cuda', action='store_true', default=False)
-    
+
     args = parser.parse_args()
 
     if args.mode == 'audio_tagging':

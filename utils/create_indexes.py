@@ -14,8 +14,8 @@ import config
 
 
 def create_indexes(args):
-    """Create indexes a for dataloader to read for training. When users have 
-    a new task and their own data, they need to create similar indexes. The 
+    """Create indexes a for dataloader to read for training. When users have
+    a new task and their own data, they need to create similar indexes. The
     indexes contain meta information of "where to find the data for training".
     """
 
@@ -35,11 +35,11 @@ def create_indexes(args):
             hw.create_dataset('index_in_hdf5', data=np.arange(audios_num), dtype=np.int32)
 
     print('Write to {}'.format(indexes_hdf5_path))
-          
+
 
 def combine_full_indexes(args):
-    """Combine all balanced and unbalanced indexes hdf5s to a single hdf5. This 
-    combined indexes hdf5 is used for training with full data (~20k balanced 
+    """Combine all balanced and unbalanced indexes hdf5s to a single hdf5. This
+    combined indexes hdf5 is used for training with full data (~20k balanced
     audio clips + ~1.9m unbalanced audio clips).
     """
 
@@ -58,27 +58,27 @@ def combine_full_indexes(args):
 
     with h5py.File(full_indexes_hdf5_path, 'w') as full_hf:
         full_hf.create_dataset(
-            name='audio_name', 
-            shape=(0,), 
-            maxshape=(None,), 
+            name='audio_name',
+            shape=(0,),
+            maxshape=(None,),
             dtype='S20')
-        
+
         full_hf.create_dataset(
-            name='target', 
-            shape=(0, classes_num), 
-            maxshape=(None, classes_num), 
+            name='target',
+            shape=(0, classes_num),
+            maxshape=(None, classes_num),
             dtype=np.bool)
 
         full_hf.create_dataset(
-            name='hdf5_path', 
-            shape=(0,), 
-            maxshape=(None,), 
+            name='hdf5_path',
+            shape=(0,),
+            maxshape=(None,),
             dtype='S200')
 
         full_hf.create_dataset(
-            name='index_in_hdf5', 
-            shape=(0,), 
-            maxshape=(None,), 
+            name='index_in_hdf5',
+            shape=(0,),
+            maxshape=(None,),
             dtype=np.int32)
 
         for path in paths:
@@ -98,7 +98,7 @@ def combine_full_indexes(args):
 
                 full_hf['index_in_hdf5'].resize((new_n,))
                 full_hf['index_in_hdf5'][n : new_n] = part_hf['index_in_hdf5'][:]
-                
+
     print('Write combined full hdf5 to {}'.format(full_indexes_hdf5_path))
 
 
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     parser_combine_full_indexes.add_argument('--full_indexes_hdf5_path', type=str, required=True, help='Path to write out full indexes hdf5 file.')
 
     args = parser.parse_args()
-    
+
     if args.mode == 'create_indexes':
         create_indexes(args)
 

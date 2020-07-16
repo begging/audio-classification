@@ -1,3 +1,5 @@
+import argparse
+import json
 import os
 import logging
 import h5py
@@ -5,16 +7,34 @@ import soundfile
 import librosa
 import numpy as np
 import pandas as pd
-from scipy import stats 
+from scipy import stats
 import datetime
 import pickle
+
+
+def parse_config():
+    argparser = argparse.ArgumentParser(description='config')
+    argparser.add_argument(
+        '-c',
+        '--conf',
+        required=True,
+        help='path to a configuration file')
+
+
+    args = argparser.parse_args()
+    config_path = args.conf
+
+    with open(config_path) as config_buffer:
+        conf = json.loads(config_buffer.read())
+
+    return conf
 
 
 def create_folder(fd):
     if not os.path.exists(fd):
         os.makedirs(fd)
-        
-        
+
+
 def get_filename(path):
     path = os.path.realpath(path)
     na_ext = path.split('/')[-1]
@@ -29,15 +49,15 @@ def get_sub_filepaths(folder):
             path = os.path.join(root, name)
             paths.append(path)
     return paths
-    
-    
+
+
 def create_logging(log_dir, filemode):
     create_folder(log_dir)
     i1 = 0
 
     while os.path.isfile(os.path.join(log_dir, '{:04d}.log'.format(i1))):
         i1 += 1
-        
+
     log_path = os.path.join(log_dir, '{:04d}.log'.format(i1))
     logging.basicConfig(
         level=logging.DEBUG,
@@ -52,7 +72,7 @@ def create_logging(log_dir, filemode):
     formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
     console.setFormatter(formatter)
     logging.getLogger('').addHandler(console)
-    
+
     return logging
 
 
@@ -73,7 +93,7 @@ def read_metadata(csv_path, classes_num, id_to_ix):
     audios_num = len(lines)
     targets = np.zeros((audios_num, classes_num), dtype=np.bool)
     audio_names = []
- 
+
     for n, line in enumerate(lines):
         items = line.split(', ')
         """items: ['--4gqARaEJE', '0.000', '10.000', '"/m/068hy,/m/07q6cd_,/m/0bt9lr,/m/0jbk"\n']"""
@@ -87,7 +107,7 @@ def read_metadata(csv_path, classes_num, id_to_ix):
         for id in label_ids:
             ix = id_to_ix[id]
             targets[n, ix] = 1
-    
+
     meta_dict = {'audio_name': np.array(audio_names), 'target': targets}
     return meta_dict
 
@@ -98,7 +118,7 @@ def float32_to_int16(x):
 
 def int16_to_float32(x):
     return (x / 32767.).astype(np.float32)
-    
+
 
 def pad_or_truncate(x, audio_length):
     """Pad all audio to specific length."""
@@ -143,7 +163,7 @@ class StatisticsContainer(object):
         self.statistics_path = statistics_path
 
         self.backup_statistics_path = '{}_{}.pkl'.format(
-            os.path.splitext(self.statistics_path)[0], 
+            os.path.splitext(self.statistics_path)[0],
             datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
 
         self.statistics_dict = {'bal': [], 'test': []}
@@ -151,21 +171,21 @@ class StatisticsContainer(object):
     def append(self, iteration, statistics, data_type):
         statistics['iteration'] = iteration
         self.statistics_dict[data_type].append(statistics)
-        
+
     def dump(self):
         pickle.dump(self.statistics_dict, open(self.statistics_path, 'wb'))
         pickle.dump(self.statistics_dict, open(self.backup_statistics_path, 'wb'))
         logging.info('    Dump statistics to {}'.format(self.statistics_path))
         logging.info('    Dump statistics to {}'.format(self.backup_statistics_path))
-        
+
     def load_state_dict(self, resume_iteration):
         self.statistics_dict = pickle.load(open(self.statistics_path, 'rb'))
 
         resume_statistics_dict = {'bal': [], 'test': []}
-        
+
         for key in self.statistics_dict.keys():
             for statistics in self.statistics_dict[key]:
                 if statistics['iteration'] <= resume_iteration:
                     resume_statistics_dict[key].append(statistics)
-                
+
         self.statistics_dict = resume_statistics_dict
