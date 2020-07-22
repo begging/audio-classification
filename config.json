@@ -3,25 +3,37 @@
 		"DO NOT EDIT THIS COMMENT",
 
 		"__mode__", [
-			"0: filewise audio classification on audio file (set audio_path)",
-			"1: framewise audio detection on audio file (set audio_path)",
-			"2: framewise audio detection on video file (set video_path, out_video_path)"
+			"0: filewise sound classification on an audio file (set audio_path)",
+			"1: framewise sound detection on an audio file (set audio_path)",
+			"2: framewise sound detection on a video file (set video_path, out_video_path)",
+			"3: real-time sound detection with mic input data"
 		],
 
 		"__top_k__: Number of sound classes to show on the target video"
 	],
 
-	"mode": 2,
+	"mode": 3,
 
-	"audio_path": "",
-	"video_path": "",
-	"out_video_path": "",
+	"audio_path": "examples/R9_ZSCveAHg_7s.wav",
+	"video_path": "examples/R9_ZSCveAHg_7s.mp4",
+	"out_video_path": "examples/R9_ZSCveAHg_7s_result.mp4",
 
 	"top_k": 5,
 
+	"use_cuda": false,
+
+	"ffmpeg_path": "utils/ffmpeg",
+
+	"save_plot": true,
+
+
+	"_model_type": "Cnn14_DecisionLevelMax",
+	"_checkpoint_path": "pytorch/models/Cnn14_DecisionLevelMax_mAP=0.385.pth",
+
+	"model_type": "MobileNetV1",
+	"checkpoint_path": "pytorch/models/MobileNetV1_mAP=0.389.pth",
+
 	"__comment__": "default params",
-	"model_type": "pytorch/models/Cnn14_DecisionLevelMax",
-	"checkpoint_path": "pytorch/models/Cnn14_DecisionLevelMax_mAP=0.385.pth",
 	"window_size": 1024,
 	"hop_size": 320,
 	"mel_bins": 64,

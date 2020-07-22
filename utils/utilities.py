@@ -1,15 +1,44 @@
+
 import argparse
-import json
-import os
-import logging
+import datetime
 import h5py
-import soundfile
+import json
+import logging
+import os
+import pickle
+
+import cv2
 import librosa
 import numpy as np
 import pandas as pd
+import soundfile
 from scipy import stats
-import datetime
-import pickle
+
+
+def show_text_on_image(text_list, window_name):
+    white_board = np.zeros((800,800,3), np.uint8)
+    white_board[:] = (255, 255, 255)
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    bottomLeftCornerOfText = (10,10)
+    fontScale = 1
+    fontColor = (0,0,0)
+    lineType = 2
+
+    for i, text in enumerate(text_list):
+        bottomLeftCornerOfText = (30, int(50 + i*50))
+
+        cv2.putText(white_board, text,
+            bottomLeftCornerOfText,
+            font,
+            fontScale,
+            fontColor,
+            lineType)
+
+    #Display the image
+    cv2.imshow(window_name,white_board)
+    cv2.waitKey(1)
+
 
 
 def parse_config():

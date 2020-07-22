@@ -1,15 +1,21 @@
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+sys.path.insert(1, os.path.join(sys.path[0], 'utils'))
+sys.path.insert(1, os.path.join(sys.path[0], 'pytorch'))
 
 import argparse
 from pprint import pprint
 
 import cv2
 import numpy as np
+import pyaudio as pa
+import wave
 
 from utils.utilities import parse_config
-from pytorch.inference import sound_event_detection, audio_tagging
+from pytorch.inference import sound_event_detection
+from pytorch.inference import audio_tagging
+from pytorch.inference import sound_event_detection_with_mic_input
+
 
 
 def sound_classification_on_audio(conf):
@@ -148,6 +154,10 @@ def cut_words(lb, max_len=20):
     return new_lb
 
 
+def sound_event_detection_real_time(conf):
+    (clipwise_output, labels) = sound_event_detection_with_mic_input(conf)
+
+
 if __name__ == '__main__':
     conf = parse_config()
 
@@ -162,3 +172,6 @@ if __name__ == '__main__':
     # framewise audio detection on a video file
     elif conf['mode'] == 2:
         sound_detection_on_video(conf)
+
+    elif conf['mode'] == 3:
+        sound_event_detection_real_time(conf)

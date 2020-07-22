@@ -1350,7 +1350,6 @@ class MobileNetV1(nn.Module):
             _layers = nn.Sequential(*_layers)
             init_layer(_layers[0])
             init_bn(_layers[2])
-            print(_layers)
 
             return _layers
 
@@ -1402,14 +1401,17 @@ class MobileNetV1(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
+        # print(0, input.dtype)
+        # print(1, input.shape)
         x = self.spectrogram_extractor(input)   # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)    # (batch_size, 1, time_steps, mel_bins)
+        # print(2, x.shape)
 
-        print(1, x.shape)
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
 
+        # print(3, x.shape)
         if self.training:
             x = self.spec_augmenter(x)
 
@@ -1417,21 +1419,20 @@ class MobileNetV1(nn.Module):
         if self.training and mixup_lambda is not None:
             x = do_mixup(x, mixup_lambda)
 
-        print(5, x.shape)
+        # print(4, x.shape)
         x = self.features(x)
-        print(6, x.shape)
+        # print(5, x.shape)
         x = torch.mean(x, dim=3)
+        # print(6, x.shape)
 
-        print(7, x.shape)
         (x1, _) = torch.max(x, dim=2)
 
         x2 = torch.mean(x, dim=2)
         x = x1 + x2
-        print(8, x.shape)
+        # print(7, x.shape)
         x = F.dropout(x, p=0.5, training=self.training)
-        print(9, x.shape)
         x = F.relu_(self.fc1(x))
-        print(10, x.shape)
+        # print(8, x.shape)
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
@@ -3068,17 +3069,16 @@ class Cnn14_DecisionLevelMax(nn.Module):
     def forward(self, input, mixup_lambda=None):
         """
         Input: (batch_size, data_length)"""
-
+        print(1, input.shape)
         x = self.spectrogram_extractor(input)   # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)    # (batch_size, 1, time_steps, mel_bins)
-
-        print(1, x.shape)
+        print(2, x.shape)
         frames_num = x.shape[2]
 
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
-
+        print(3, x.shape)
         if self.training:
             x = self.spec_augmenter(x)
 
@@ -3086,62 +3086,51 @@ class Cnn14_DecisionLevelMax(nn.Module):
         if self.training and mixup_lambda is not None:
             x = do_mixup(x, mixup_lambda)
 
+        print(4, x.shape)
         x = self.conv_block1(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-        print(2, x.shape)
 
+        print(5, x.shape)
         x = self.conv_block2(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-        print(2.1, x.shape)
-
+        print(5.1, x.shape)
         x = self.conv_block3(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-        print(2.2, x.shape)
-
+        print(5.2, x.shape)
         x = self.conv_block4(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-        print(2.3, x.shape)
-
+        print(5.3, x.shape)
         x = self.conv_block5(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-        print(2.4, x.shape)
-
+        print(5.4, x.shape)
         x = self.conv_block6(x, pool_size=(1, 1), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-        print(3, x.shape)
-        x = torch.mean(x, dim=3)
-        print(4, x.shape)
 
+        print(6, x.shape)
+        x = torch.mean(x, dim=3)
         x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
         x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
+        print(7, x.shape)
         x = x1 + x2
-        print(5, x.shape)
+        print(8, x.shape)
         x = F.dropout(x, p=0.5, training=self.training)
-
         x = x.transpose(1, 2)
-
-        print(5.1, x.shape)
+        print(9, x.shape)
         x = F.relu_(self.fc1(x))
-
+        print(10, x.shape)
         x = F.dropout(x, p=0.5, training=self.training)
-        print(6, x.shape)
-        segmentwise_output = torch.sigmoid(self.fc_audioset(x))
-        print("segmentwise_output", segmentwise_output.shape)
+        print(11, x.shape)
 
+        segmentwise_output = torch.sigmoid(self.fc_audioset(x))
+        print('segmentwise_output', segmentwise_output.shape)
         (clipwise_output, _) = torch.max(segmentwise_output, dim=1)
+        print('clipwise_output', clipwise_output.shape)
         # clipwise_output = torch.mean(segmentwise_output, dim=1)
-        print("clipwise_output", clipwise_output.shape)
-        print(clipwise_output)
-        print(torch.max(clipwise_output))
 
         # Get framewise output
         framewise_output = interpolate(segmentwise_output, self.interpolate_ratio)
-
-        print("framewise_output", framewise_output.shape)
-
         framewise_output = pad_framewise_output(framewise_output, frames_num)
-        print("framewise_output", framewise_output.shape)
-
+        print('framewise_output', framewise_output.shape)
         output_dict = {'framewise_output': framewise_output,
             'clipwise_output': clipwise_output}
 
@@ -3200,15 +3189,17 @@ class Cnn14_DecisionLevelAvg(nn.Module):
         Input: (batch_size, data_length)"""
 
         # t1 = time.time()
+        print(1, input.shape)
         x = self.spectrogram_extractor(input)   # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)    # (batch_size, 1, time_steps, mel_bins)
 
+        print(2, x.shape)
         frames_num = x.shape[2]
 
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
-
+        print(3, x.shape)
         if self.training:
             x = self.spec_augmenter(x)
 
@@ -3216,8 +3207,11 @@ class Cnn14_DecisionLevelAvg(nn.Module):
         if self.training and mixup_lambda is not None:
             x = do_mixup(x, mixup_lambda)
 
+        print(4, x.shape)
         x = self.conv_block1(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
+
+        print(5, x.shape)
         x = self.conv_block2(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.conv_block3(x, pool_size=(2, 2), pool_type='avg')
@@ -3228,21 +3222,33 @@ class Cnn14_DecisionLevelAvg(nn.Module):
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.conv_block6(x, pool_size=(1, 1), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
+
+        print(6, x.shape)
         x = torch.mean(x, dim=3)
 
         x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
         x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
+        print(7, x.shape)
         x = x1 + x2
+
+        print(8, x.shape)
         x = F.dropout(x, p=0.5, training=self.training)
         x = x.transpose(1, 2)
+        print(9, x.shape)
         x = F.relu_(self.fc1(x))
+        print(10, x.shape)
         x = F.dropout(x, p=0.5, training=self.training)
+        print(11, x.shape)
         segmentwise_output = torch.sigmoid(self.fc_audioset(x))
+        print('segmentwise_output', segmentwise_output.shape)
         clipwise_output = torch.mean(segmentwise_output, dim=1)
+        print('clipwise_output', clipwise_output.shape)
 
         # Get framewise output
         framewise_output = interpolate(segmentwise_output, self.interpolate_ratio)
         framewise_output = pad_framewise_output(framewise_output, frames_num)
+
+        print('framewise_output', framewise_output.shape)
 
         output_dict = {'framewise_output': framewise_output,
             'clipwise_output': clipwise_output}
@@ -3317,18 +3323,12 @@ class Cnn14_DecisionLevelAtt(nn.Module):
         if self.training and mixup_lambda is not None:
             x = do_mixup(x, mixup_lambda)
 
-        print(1, x.shape)
-
         x = self.conv_block1(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-
-        print(2, x.shape)
         x = self.conv_block2(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-
         x = self.conv_block3(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
-
         x = self.conv_block4(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.conv_block5(x, pool_size=(2, 2), pool_type='avg')
@@ -3336,25 +3336,17 @@ class Cnn14_DecisionLevelAtt(nn.Module):
         x = self.conv_block6(x, pool_size=(1, 1), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
 
-        print(3, x.shape)
         x = torch.mean(x, dim=3)
-
-        print(4, x.shape)
         x1 = F.max_pool1d(x, kernel_size=3, stride=1, padding=1)
         x2 = F.avg_pool1d(x, kernel_size=3, stride=1, padding=1)
         x = x1 + x2
-        print(5, x.shape)
+
         x = F.dropout(x, p=0.5, training=self.training)
         x = x.transpose(1, 2)
         x = F.relu_(self.fc1(x))
-        print(6, x.shape)
         x = x.transpose(1, 2)
         x = F.dropout(x, p=0.5, training=self.training)
-        print(7, x.shape)
         (clipwise_output, _, segmentwise_output) = self.att_block(x)
-
-        print(8, clipwise_output.shape)
-        print(9, segmentwise_output.shape)
         segmentwise_output = segmentwise_output.transpose(1, 2)
 
         # Get framewise output
