@@ -15,8 +15,8 @@ import soundfile
 from scipy import stats
 
 
-def show_text_on_image(text_list, window_name):
-    white_board = np.zeros((800,800,3), np.uint8)
+def show_text_on_image(text_list, window_name, image_size):
+    white_board = np.zeros((image_size[0], image_size[1], 3), np.uint8)
     white_board[:] = (255, 255, 255)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -36,9 +36,9 @@ def show_text_on_image(text_list, window_name):
             lineType)
 
     #Display the image
-    cv2.imshow(window_name,white_board)
-    cv2.waitKey(1)
-
+    cv2.imshow(window_name, white_board)
+    ch = cv2.waitKey(1) & 0xFF
+    return ch
 
 
 def parse_config():

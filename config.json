@@ -9,34 +9,51 @@
 			"3: real-time sound detection with mic input data"
 		],
 
-		"__top_k__: Number of sound classes to show on the target video"
+		"__top_k__: Number of sound classes to show",
+		"__image_size__: Image size to show result (height, width)",
+		"__device_index__: Mic index to use. Check mic index by using 'check_mic.py'",
+
+		"__model_type__: CNN model type to use",
+		"__checkpoint_path__: Model path"
 	],
 
 	"mode": 3,
 
-	"audio_path": "examples/R9_ZSCveAHg_7s.wav",
-	"video_path": "examples/R9_ZSCveAHg_7s.mp4",
-	"out_video_path": "examples/R9_ZSCveAHg_7s_result.mp4",
+	"top_k": 10,
 
-	"top_k": 5,
+	"image_size": [600, 1000],
 
 	"use_cuda": false,
+	
+	"__comment__": "pretrained CNN model (https://zenodo.org/record/3576403)",
+	"_model_type": "Cnn14",
+	"_checkpoint_path": "pytorch/models/Cnn14_mAP=0.431.pth",
 
-	"ffmpeg_path": "utils/ffmpeg",
-
-	"save_plot": true,
-
-
-	"_model_type": "Cnn14_DecisionLevelMax",
-	"_checkpoint_path": "pytorch/models/Cnn14_DecisionLevelMax_mAP=0.385.pth",
+	"_model_type": "Wavegram_Logmel_Cnn14",
+	"_checkpoint_path": "pytorch/models/Wavegram_Logmel_Cnn14_mAP=0.439.pth",
 
 	"model_type": "MobileNetV1",
 	"checkpoint_path": "pytorch/models/MobileNetV1_mAP=0.389.pth",
 
-	"__comment__": "default params",
+	"__comment__": "params for mic recording",
+	"device_index": 0,
+	"record_seconds": 2,
+	"step_seconds": 1,
+	"chunk": 1024,
+	"rate": 32000,
+	"channels": 1,
+	
+	"__comment__": "params for audio features",
 	"window_size": 1024,
 	"hop_size": 320,
 	"mel_bins": 64,
 	"fmin": 50,
-	"fmax": 14000
+	"fmax": 14000,
+
+	"__comment__": "temporary params",
+	"audio_path": "",
+	"video_path": "",
+	"out_video_path": "",
+	"ffmpeg_path": "",
+	"save_plot": true
 }

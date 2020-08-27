@@ -1,0 +1,54 @@
+마이크 입력을 통한 실시간 소리 인식 프로그램
+
+## 테스트 환경 ##
+- MacOS 10.12.6, Python3.7
+
+
+## 설치 방법 ##
+$ pip3 install -r requirements.txt
+
+
+## 실행 방법 ##
+* 실행은 프로젝트 최상단 경로에서 하시면 됩니다.
+
+1. 사용할 마이크 ID 확인
+$ python3 utils/check_mic.py
+
+2. 프로그램 설정 (config.json)
+- 모드 설정 (모드 설정은 추후 사용 방향을 확장하기 위해 만들어놨으며 현재는 3으로 입력해주시면 됩니다)
+"mode": 3
+
+- 이미지에 몇 개의 결과를 출력할지 설정
+"top_k": 10
+
+- 결과를 출력할 이미지 사이즈 설정
+"image_size": [600, 100]
+
+- GPU 사용 여부 설정 (테스트 시 CPU에서도 실시간 연산 가능했습니다)
+"use_cuda": true 또는 false
+
+- CNN 모델 경로 설정 (https://zenodo.org/record/3576403에서 다운받을 수 있으며 샘플로 3가지 모델같이 첨부하였습니다)
+"checkpoint_path": "pytorch/models/MobileNetV1_mAP=0.389.pth"
+
+- CNN에 모델 타입 설정 (checkpoint_path 이름에서 mAP 앞에 있는 모델 이름만 작성해주시면 됩니다)
+"model_type": "MobileNetV1"
+
+- 사용할 마이크 설정 (1번에서 확인한 마이크 ID를 입력해주시면 됩니다)
+"device_index": 0
+
+- 몇 초를 하나의 소리로 인식할지 설정
+"record_seconds": 2
+
+- 몇 초마다 소리를 인식할지 설정
+"step_seconds": 1
+
+- 이 외 다른 파라미터들은 건드리지 않으셔도 됩니다
+
+3. 프로그램 실행
+$ python3 run.py -c config.json
+
+4. 프로그램 실행 결과 및 종료 방법
+- 소리 인식 결과는 이미지를 통해 출력되게 됩니다.
+- 종료 방법의 경우 현재는 단순히 실행창에서 ctrl+c를 이용하여 프로그램을 종료하고 있습니다.
+- 원하시는 인터페이스가 있으면 말씀해주시면 수정해드리겠습니다.
+- 인식하는 class 종류에 대해서는 metadata/class_labels_indices.csv 파일 참고하시면 됩니다.
