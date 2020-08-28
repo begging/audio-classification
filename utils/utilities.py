@@ -15,6 +15,17 @@ import soundfile
 from scipy import stats
 
 
+def create_logger():
+
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(message)s',
+                        handlers=[])
+
+    log = logging.getLogger(__name__)
+
+    return log
+
+
 def show_text_on_image(text_list, window_name, image_size):
     white_board = np.zeros((image_size[0], image_size[1], 3), np.uint8)
     white_board[:] = (255, 255, 255)
