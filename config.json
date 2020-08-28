@@ -9,19 +9,25 @@
 			"3: real-time sound detection with mic input data"
 		],
 
+		"__output_mode__", [
+			"image",
+			"file",
+			"stdout"
+		],
+
 		"__top_k__: Number of sound classes to show",
 		"__image_size__: Image size to show result (height, width)",
 		"__device_index__: Mic index to use. Check mic index by using 'check_mic.py'",
 
 		"__model_type__: CNN model type to use",
-		"__checkpoint_path__: Model path"
+		"__checkpoint_path__: Model path",
+
+		"__chunk__: 1024 ~ 20000"
 	],
 
 	"mode": 3,
 
-	"top_k": 10,
-
-	"image_size": [600, 1000],
+	"top_k": 5,
 
 	"use_cuda": false,
 	
@@ -35,13 +41,15 @@
 	"model_type": "MobileNetV1",
 	"checkpoint_path": "pytorch/models/MobileNetV1_mAP=0.389.pth",
 
+	"__comment__": "params for output",
+	"output_mode": ["file", "image", "stdout"],
+	"image_size": [600, 1000],
+	"output_file_path": "result.log",
+
 	"__comment__": "params for mic recording",
 	"device_index": 0,
 	"record_seconds": 2,
 	"step_seconds": 1,
-	"chunk": 1024,
-	"rate": 32000,
-	"channels": 1,
 	
 	"__comment__": "params for audio features",
 	"window_size": 1024,
