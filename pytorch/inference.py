@@ -1,13 +1,14 @@
+import argparse
+from datetime import datetime
 import os
 import sys
-
-import argparse
 
 import cv2
 import librosa
 import matplotlib.pyplot as plt
 import numpy as np
 import pyaudio as pa
+import scipy.signal as sps
 import threading
 import time
 import torch
@@ -16,6 +17,7 @@ import config
 from models import *
 from utilities import create_folder, get_filename, show_text_on_image
 from pytorch_utils import move_data_to_device
+from utils.check_mic import get_supported_rate, get_proper_rate
 
 
 def audio_tagging(conf):
@@ -186,48 +188,72 @@ def sound_event_detection(conf):
     return framewise_output, clipwise_output, labels
 
 
-def sound_event_detection_with_mic_input(conf):
+class SoundDetector:
+    def __init__(self, conf, log):
 
-    chunk = conf['chunk']
-    device_index = conf['device_index']
-    channels = conf['channels']
-    rate = conf['rate']
-    record_seconds = conf['record_seconds']
-    step_seconds = conf['step_seconds']
-    dtype = pa.paFloat32
+        self.conf = conf
+        self.log = log
 
-    mutex = threading.Lock()
-    waveform = None
-    thread_stop = False
+        self.waveform = None
+        self.thread_stop = False
+        self.mutex = threading.Lock()
 
-    def mic_thread_func():
-        nonlocal waveform
-        nonlocal thread_stop
+    def mic_thread_func(self):
+
+        device_index = self.conf['device_index']
+        record_seconds = self.conf['record_seconds']
+        step_seconds = self.conf['step_seconds']
+
+        target_rate = config.sample_rate
+        supported_rate_list = get_supported_rate(device_index)
+        rate = get_proper_rate(supported_rate_list, target_rate)
+        chunk = int(round(step_seconds*rate))
+        channels = 1
+        dtype = pa.paFloat32
 
         p = pa.PyAudio()
+
+        self.log.info('')
+        self.log.info('Recording Info')
+        self.log.info(' - device index: {}'.format(device_index))
+        self.log.info(' - device name: {}'.format(
+            p.get_device_info_by_host_api_device_index(
+                0, device_index).get('name')))
+        self.log.info(' - available rate: {}'.format(rate))
+        self.log.info(' - target rate: {}'.format(target_rate))
+        self.log.info(' - record_seconds: {}'.format(record_seconds))
+        self.log.info(' - step_seconds: {}'.format(step_seconds))
+        self.log.info('')
 
         stream = p.open(input_device_index=device_index,
                         format=dtype,
                         channels=channels,
                         rate=rate,
-                        input=True,
-                        frames_per_buffer=chunk)
+                        input=True)
 
         len_to_record = int(round(record_seconds*rate/chunk))
         len_to_step = int(round(step_seconds*rate/chunk))
 
         frames = []
 
-        print('Recording ...')
-        while not thread_stop:
-            data = stream.read(chunk)
-            frames.append(np.frombuffer(data, dtype=np.float32))
+        self.log.info('Recording ...\n')
+
+        while not self.thread_stop:
+
+            raw_data = stream.read(chunk)
+            data = np.frombuffer(raw_data, dtype=np.float32)
+            if target_rate != rate:
+                # data = librosa.resample(data, rate, target_rate)
+                target_sample_number = round(chunk*target_rate/rate)
+                data = sps.resample(data, target_sample_number)
+
+            frames.append(data)
 
             if len(frames) >= len_to_step:
                 if len(frames) >= len_to_record:
-                    with mutex:
-                        waveform = np.hstack(frames[-len_to_record:])
-                        waveform = waveform[None, :]
+                    with self.mutex:
+                        self.waveform = np.hstack(frames[-len_to_record:])
+                        self.waveform = self.waveform[None, :]
 
                     if len_to_step >= len_to_record:
                         frames = []
@@ -238,92 +264,118 @@ def sound_event_detection_with_mic_input(conf):
         stream.close()
         p.terminate()
 
-    # Arugments & parameters
-    window_size = conf['window_size']
-    hop_size = conf['hop_size']
-    mel_bins = conf['mel_bins']
-    fmin = conf['fmin']
-    fmax = conf['fmax']
-    model_type = conf['model_type']
-    checkpoint_path = conf['checkpoint_path']
-    top_k = conf['top_k']
-    image_size = conf['image_size']
 
-    if conf['use_cuda'] and torch.cuda.is_available():
-        device = torch.device('cuda')
-        print('GPU mode: True')
-    else:
-        device = torch.device('cpu')
-        print('GPU mode: False')
+    def sound_event_detection_with_mic_input(self):
 
-    sample_rate = config.sample_rate
-    classes_num = config.classes_num
-    labels = config.labels
+        # Arugments & parameters
+        window_size = self.conf['window_size']
+        hop_size = self.conf['hop_size']
+        mel_bins = self.conf['mel_bins']
+        fmin = self.conf['fmin']
+        fmax = self.conf['fmax']
+        model_type = self.conf['model_type']
+        checkpoint_path = self.conf['checkpoint_path']
+        top_k = self.conf['top_k']
+        output_mode = self.conf['output_mode']
+        image_size = self.conf['image_size']
 
-    print('Model loading ({}) ... '.format(model_type))
-    # Model
-    Model = eval(model_type)
-    model = Model(sample_rate=sample_rate, window_size=window_size,
-        hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
-        classes_num=classes_num)
+        sample_rate = config.sample_rate
+        classes_num = config.classes_num
+        labels = config.labels
 
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint['model'])
+        # Model
+        Model = eval(model_type)
+        model = Model(sample_rate=sample_rate, window_size=window_size,
+            hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
+            classes_num=classes_num)
 
-    # Parallel
+        self.log.info('')
+        self.log.info('Model info')
+        self.log.info(' - model type: {}'.format(model_type))
 
-    model = torch.nn.DataParallel(model)
+        if self.conf['use_cuda'] and torch.cuda.is_available():
+            device = torch.device('cuda')
+            self.log.info(' - gpu use: True')
+        else:
+            device = torch.device('cpu')
+            self.log.info(' - gpu use: False')
+            if self.conf['use_cuda']:
+                self.log.info('      => torch.cuda is not available')
 
-    if 'cuda' in str(device):
-        model.to(device)
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint['model'])
 
-    mic_thread = threading.Thread(target=mic_thread_func)
-    mic_thread.start()
+        # Parallel
+        model = torch.nn.DataParallel(model)
 
-    while True:
-        # Load audio
-        if waveform is None:
-            time.sleep(0.01)
-            continue
+        if 'cuda' in str(device):
+            model.to(device)
 
-        device_waveform = move_data_to_device(waveform, device)
-        with mutex:
-            waveform = None
+        thread = threading.Thread(target=self.mic_thread_func)
+        thread.start()
 
-        # Forward
-        with torch.no_grad():
-            model.eval()
-            batch_output_dict = model(device_waveform, None)
+        while True:
+            # Load audio
+            if self.waveform is None:
+                time.sleep(0.01)
+                continue
 
-        clipwise_output = batch_output_dict['clipwise_output'].data.cpu().numpy()[0]
-        """(classes_num,)"""
+            device_waveform = move_data_to_device(self.waveform, device)
+            with self.mutex:
+                self.waveform = None
 
-        sorted_indexes = np.argsort(clipwise_output)[::-1]
+            # Forward
+            with torch.no_grad():
+                model.eval()
+                batch_output_dict = model(device_waveform, None)
 
-        # Print audio tagging top probabilities
-        result_text_list = []
-        for k in range(top_k):
+            clipwise_output = \
+                batch_output_dict['clipwise_output'].data.cpu().numpy()[0]
 
-            text = '{}: {:.3f}'.format(np.array(labels)[sorted_indexes[k]],
-                    clipwise_output[sorted_indexes[k]])
+            """(classes_num,)"""
 
-            result_text_list.append(text)
+            sorted_indexes = np.argsort(clipwise_output)[::-1]
 
-            # print(text)
+            # Print audio tagging top probabilities
+            result_text_list = []
+            result_text_list.append('<{}>'.format(
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
-        result_window_name = "Sound Detection Result"
-        ret = show_text_on_image(result_text_list, result_window_name,
-            image_size)
+            for k in range(top_k):
+                text = '{}: {:.3f}'.format(np.array(labels)[sorted_indexes[k]],
+                        clipwise_output[sorted_indexes[k]])
 
-        # if ret in [26, ord('q'), ord('Q')]:
-        #     thread_stop = True
-        #     cv2.destroyWindow(result_window_name)
-        #     break
+                result_text_list.append(text)
 
-    if mic_thread.is_alive():
-        mic_thread.join()
+            # image
+            if 'image' in self.conf['output_mode']:
+                result_window_name = "Sound Detection Result"
+                ret = show_text_on_image(result_text_list,
+                                         result_window_name,
+                                         image_size)
 
-    return clipwise_output, labels
+                if ret in [26, ord('q'), ord('Q')]:
+                    self.thread_stop = True
+                    cv2.destroyWindow(result_window_name)
+                    break
+
+            result_texts = ''.join(e+'\n' for e in result_text_list)
+
+            self.log.debug(result_texts)
+
+        if mic_thread.is_alive():
+            mic_thread.join()
+
+        return clipwise_output, labels
+
+    def run(self):
+        if self.conf['mode'] == 3:
+            self.log.info('Sound event detection in real time with mic input')
+            self.sound_event_detection_with_mic_input()
+
+        else:
+            self.log.info("Current mode is {}\nSet mode to 3 in config.json".format(
+                conf['mode']))
 
 
 if __name__ == '__main__':
