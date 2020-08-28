@@ -2,6 +2,7 @@
 
 ## 테스트 환경 ##
 - MacOS 10.12.6, Python3.7
+- Ubuntu 16.04, Python3.7
 
 
 ## 설치 방법 ##
@@ -18,20 +19,26 @@ $ python3 utils/check_mic.py
 - 모드 설정 (모드 설정은 추후 사용 방향을 확장하기 위해 만들어놨으며 현재는 3으로 입력해주시면 됩니다)
 "mode": 3
 
-- 이미지에 몇 개의 결과를 출력할지 설정
-"top_k": 10
-
-- 결과를 출력할 이미지 사이즈 설정
-"image_size": [600, 100]
-
 - GPU 사용 여부 설정 (테스트 시 CPU에서도 실시간 연산 가능했습니다)
 "use_cuda": true 또는 false
 
-- CNN 모델 경로 설정 (https://zenodo.org/record/3576403에서 다운받을 수 있으며 샘플로 3가지 모델같이 첨부하였습니다)
+- 이미지에 몇 개의 결과를 출력할지 설정
+"top_k": 10
+
+- CNN 모델 경로 설정 (https://zenodo.org/record/3576403에서 다운받을 수 있으며 샘플로 3가지 모델같이 첨부하였습니다.)
 "checkpoint_path": "pytorch/models/MobileNetV1_mAP=0.389.pth"
 
 - CNN에 모델 타입 설정 (checkpoint_path 이름에서 mAP 앞에 있는 모델 이름만 작성해주시면 됩니다)
 "model_type": "MobileNetV1"
+
+- 결과 출력 방법 설정 (image, file, stdout 중 원하시는 결과 출력 방법을 리스트에 넣어주시면 됩니다. 복수로 설정가능합니다.)
+"output_mode": ["image", "file", "stdout"]
+
+- 결과를 출력할 이미지 사이즈 설정
+"image_size": [600, 1000]
+
+- 결과 로그를 저장할 파일명 (같은 이름의 기존 로그 파일이 있을 경우 이어쓰기로 설정됩니다)
+"output_file_path": "result.log"
 
 - 사용할 마이크 설정 (1번에서 확인한 마이크 ID를 입력해주시면 됩니다)
 "device_index": 0
@@ -48,7 +55,7 @@ $ python3 utils/check_mic.py
 $ python3 run.py -c config.json
 
 4. 프로그램 실행 결과 및 종료 방법
-- 소리 인식 결과는 이미지를 통해 출력되게 됩니다.
+- 소리 인식 결과는 이미지, 파일 또는 터미널에 출력하고 있습니다.
 - 종료 방법의 경우 현재는 단순히 실행창에서 ctrl+c를 이용하여 프로그램을 종료하고 있습니다.
 - 원하시는 인터페이스가 있으면 말씀해주시면 수정해드리겠습니다.
 - 인식하는 class 종류에 대해서는 metadata/class_labels_indices.csv 파일 참고하시면 됩니다.

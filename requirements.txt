@@ -8,3 +8,4 @@ pyaudio==0.2.11
 h5py
 numba==0.48.0
 pandas==1.0.5
+scipy==1.4.1
